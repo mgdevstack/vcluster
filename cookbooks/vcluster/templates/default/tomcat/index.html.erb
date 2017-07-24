@@ -1,0 +1,30 @@
+<html>
+<head>
+<title>Sample "Hello, World" Application</title>
+</head>
+<body bgcolor=white>
+
+<table border="0">
+<tr>
+<td>
+<img src="images/tomcat.gif">
+</td>
+<td>
+<h1>Hey Buddy</h1>
+<p>This is the home page for a sample application used to illustrate the
+source directory organization of a web application utilizing the principles
+outlined in the Application Developer's Guide.
+</td>
+</tr>
+</table>
+
+<p>This Web application is load balanced. Open below link to know server detail
+<ul>
+<li>Dynamic Page : <a href="hello.jsp">JSP page </a>.
+<!-- <li>To a <a href="hello">servlet</a>. -->
+</ul>
+
+<h2>Below ThoughtWorks Image is pulled from Frontend server. Endpoint can be replaced with CDN to fetch static assets</h2>
+<a href="hello.jsp"> <img src="http://<%= @frontend_box_ip %>/images/tworks.png"> </a>
+</body>
+</html>

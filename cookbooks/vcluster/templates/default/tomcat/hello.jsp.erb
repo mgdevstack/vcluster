@@ -1,0 +1,27 @@
+<html>
+<head>
+<title>Sample Application JSP Page</title>
+</head>
+<body bgcolor=white>
+
+<table border="0">
+<tr>
+<td align=center>
+<img src="images/tomcat.gif">
+</td>
+<td>
+<h1>Sample Application JSP Page</h1>
+This is the output of a JSP page that is part of the Hello, World
+application.
+</td>
+</tr>
+</table>
+
+<%%= new String("Hello vcluster !!") %>
+<h2> Environment: <%= @chef_environment %> </h2>
+<h2> FrontEnd Server IP: <%%=  request.getRemoteAddr()  %> </h2>
+<h2> Backend Server IP: <%%= request.getLocalAddr() %> </h2>
+<h4 style="color:red"> click ThoughtWorks to refresh </h4>
+<a href="hello.jsp"> <img src="http://<%= @frontend_box_ip %>/images/tworks.png"> </a>
+</body>
+</html>

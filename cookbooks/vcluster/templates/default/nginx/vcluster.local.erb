@@ -1,0 +1,20 @@
+upstream app {
+        <% @app_cluster.each do |server_ip| %>
+        server <%= server_ip %>:8080;
+        <% end %>
+}
+
+server {
+        listen <%= @web_port %>;
+        root <%= @vcluster_web_root %> ;
+        index index.html index.html ;
+        location /sample/ {
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_pass http://app;
+        }
+        location / {
+                return 301 /sample;
+        }
+}

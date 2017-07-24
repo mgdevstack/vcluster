@@ -1,0 +1,12 @@
+#!/bin/sh
+export JAVA_OPTS="<%= @java_options %>"
+case "$1" in
+start)
+  <%= @install_path %>/bin/startup.sh
+;;
+stop)
+  <%= @install_path %>/bin/shutdown.sh
+;;
+*)
+  echo "Syntax: $0 <start|stop>"
+esac

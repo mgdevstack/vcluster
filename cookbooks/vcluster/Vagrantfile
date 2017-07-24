@@ -1,0 +1,143 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+require 'json'
+
+bootstrap_file = ::File.read("bootstrap.json")
+bootstrap_data = JSON.parse(bootstrap_file)
+
+project_name = 'vcluster'
+environment = bootstrap_data['environment'].downcase.include?('production') ? 'production' : 'training'
+
+input_machine_count = bootstrap_data['backend_server_count'].to_i
+backend_machine_count = if input_machine_count > 3
+                          3
+                        elsif input_machine_count < 1
+                          1
+                        else
+                          input_machine_count
+                        end 
+
+
+backend_machine_cluster = []
+1.upto(backend_machine_count) do | i_count|
+  backend_machine_cluster.push("192.168.11.2#{i_count}")
+end
+
+frontend_ip = "192.168.11.11"
+
+puts "====================================================="
+puts "environment : #{environment}"
+puts "frontend_ip : #{frontend_ip}"
+puts "backend_machine_count : #{backend_machine_count}"
+puts "backend_machine_cluster : #{backend_machine_cluster}"
+puts "====================================================="
+
+Vagrant.configure("2") do |config|
+
+  config.vm.box = "bento/ubuntu-14.04"
+  # config.vm.box = "omnibus-ubuntu-14.04"  # Internal USE
+  # config.vm.box = "ubuntu/trusty64"
+
+  config.omnibus.chef_version = "12.15.19"  
+  config.berkshelf.enabled = true
+  config.berkshelf.berksfile_path = "./Berksfile"
+
+  config.ssh.forward_agent = true
+  config.ssh.insert_key = false
+
+  host_project_path = File.expand_path("..", __FILE__)
+  guest_project_path = "/home/vagrant/#{File.basename(host_project_path)}"
+
+  custom_cookbook_path = File.expand_path("../..", __FILE__)
+  guest_cookbook_path = "/home/vagrant/#{File.basename(custom_cookbook_path)}"
+  
+  environment_path = File.expand_path("../../../environments", __FILE__)
+
+  config.vm.synced_folder host_project_path, guest_project_path
+  config.vm.synced_folder custom_cookbook_path, guest_cookbook_path
+
+
+# Servers for FrontEnd
+  1.upto(1) do | i_count|
+    frontend_ip = "192.168.11.1#{i_count}"
+    config.vm.define "#{project_name}-frontend-#{i_count}" do |c|
+      c.vm.hostname = "#{project_name}-frontend-#{i_count}"
+      c.vm.network "private_network", ip: frontend_ip
+      c.berkshelf.berksfile_path = "./Berksfile"
+
+      c.vm.provision :chef_solo do |chef|
+        chef.cookbooks_path = ["#{guest_cookbook_path}"]
+        chef.environments_path = environment_path
+        chef.environment = environment
+        chef.json = {
+          "omnibus" => {
+            "build_user" => "vagrant",
+            "build_dir" => guest_project_path,
+            "install_dir" => "/opt/#{project_name}"
+          },
+          "vcluster" => {
+            "environment" => environment,
+            "backend_app" => {
+              "cluster_ips" => backend_machine_cluster
+            }
+          }
+        }
+        chef.run_list = [
+          "recipe[vcluster::web_lwrp]"
+          # "recipe[vcluster::frontend]"
+        ]
+      end
+        
+      c.vm.provider "virtualbox" do |vb|
+        vb.gui = false
+        vb.memory = "512"
+        vb.cpus = 2
+        vb.customize ["modifyvm", :id, "--cableconnected1", "on"]
+      end
+    end 
+  end
+
+# Servers for Backend
+  1.upto(backend_machine_count) do | i_count|
+
+    backend_ip = "192.168.11.2#{i_count}"
+
+    config.vm.define "#{project_name}-backend-#{i_count}" do |c|
+      c.vm.hostname = "#{project_name}-backend-#{i_count}"
+      c.vm.network "private_network", ip: backend_ip
+      c.berkshelf.berksfile_path = "./Berksfile"
+      c.vm.provider "virtualbox" do |vb|
+        vb.gui = false
+        vb.memory = "1024"
+        vb.cpus = 2
+        vb.customize ["modifyvm", :id, "--cableconnected1", "on"]
+      end
+
+      c.vm.provision :chef_solo do |chef|
+        chef.cookbooks_path = ["#{guest_cookbook_path}"]
+        chef.environments_path = environment_path
+        chef.environment = environment
+        chef.json = {
+          "omnibus" => {
+            "build_user" => "vagrant",
+            "build_dir" => guest_project_path,
+            "install_dir" => "/opt/#{project_name}"
+          },
+          "vcluster" => {
+            "environment" => environment,            
+            "backend_app" => {
+              "cluster_ips" => backend_machine_cluster
+            },
+            "web" => {
+              "ip" => frontend_ip
+            }
+          }
+        }
+        chef.run_list = [
+          "recipe[vcluster::backend]"
+        ]
+      end
+    end
+  end
+
+end
